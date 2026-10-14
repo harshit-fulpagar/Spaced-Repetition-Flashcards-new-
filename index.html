@@ -1,0 +1,418 @@
+<D!OCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recall — Spaced Repetition Flashcards</title>
+<style>
+:root {
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface-2: #eef2ff;
+  --text: #172033;
+  --muted: #667085;
+  --border: #e2e8f0;
+  --primary: #5b5ce2;
+  --primary-dark: #4546bd;
+  --green: #16845b;
+  --amber: #b7791f;
+  --red: #c2414b;
+  --shadow: 0 18px 45px rgba(25, 35, 75, .10);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; }
+.app { min-height: 100vh; }
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 16px clamp(16px, 4vw, 56px);
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  position: sticky; top: 0; z-index: 10;
+}
+.brand { display: flex; align-items: center; gap: 11px; font-weight: 800; letter-spacing: -.04em; font-size: 1.25rem; }
+.logo {
+  width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+  color: white; background: linear-gradient(135deg, #7979ff, #4b4bc5); font-size: 1.25rem;
+}
+.top-actions { display: flex; gap: 10px; align-items: center; }
+.pill { background: var(--surface-2); color: var(--primary-dark); border-radius: 999px; padding: 8px 12px; font-size: .82rem; font-weight: 700; }
+.btn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: 12px; padding: 10px 14px; font-weight: 700; transition: .18s ease;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 7px 18px rgba(30, 40, 90, .08); }
+.btn.primary { background: var(--primary); color: white; border-color: var(--primary); }
+.btn.primary:hover { background: var(--primary-dark); }
+.btn.small { padding: 8px 11px; font-size: .88rem; }
+main { max-width: 1180px; margin: 0 auto; padding: 36px clamp(16px, 4vw, 28px) 60px; }
+.hero { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 26px; }
+.eyebrow { color: var(--primary); text-transform: uppercase; letter-spacing: .14em; font-size: .74rem; font-weight: 800; }
+h1 { font-size: clamp(2rem, 4vw, 3.1rem); letter-spacing: -.055em; line-height: 1.05; margin: 9px 0 12px; }
+.subtitle { color: var(--muted); margin: 0; max-width: 600px; line-height: 1.6; }
+.hero-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 25px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px; }
+.stat-label { color: var(--muted); font-size: .84rem; font-weight: 650; }
+.stat-value { font-size: 1.75rem; font-weight: 800; letter-spacing: -.04em; margin-top: 8px; }
+.stat-note { color: var(--muted); font-size: .78rem; margin-top: 4px; }
+.progress-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px; margin-bottom: 28px; }
+.progress-heading { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 12px; font-weight: 750; }
+.progress-track { height: 10px; border-radius: 99px; background: #e9eaf6; overflow: hidden; }
+.progress-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #7778ff, #27b88a); border-radius: inherit; transition: width .35s ease; }
+.section-head { display: flex; justify-content: space-between; align-items: end; gap: 14px; margin: 26px 0 15px; }
+h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.035em; }
+.section-head p { margin: 5px 0 0; color: var(--muted); font-size: .9rem; }
+.study-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(260px, .8fr); gap: 18px; align-items: stretch; }
+.study-panel, .side-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 22px; min-width: 0; }
+.study-meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 18px; }
+.tag { padding: 6px 10px; border-radius: 99px; font-size: .78rem; font-weight: 800; background: #f0efff; color: var(--primary-dark); }
+.card-count { color: var(--muted); font-size: .84rem; }
+.flip-scene { perspective: 1100px; min-height: 280px; }
+.flashcard {
+  width: 100%; min-height: 280px; position: relative; transform-style: preserve-3d;
+  transition: transform .65s cubic-bezier(.2,.7,.2,1); cursor: pointer; outline: none;
+}
+.flashcard.flipped { transform: rotateY(180deg); }
+.card-face {
+  position: absolute; inset: 0; border-radius: 20px; padding: 30px;
+  display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border: 1px solid #dfe1ff; background: linear-gradient(145deg, #fafaff, #f0f0ff);
+}
+.card-face.back { transform: rotateY(180deg); background: linear-gradient(145deg, #f1fff8, #e8f8f1); border-color: #ccefe0; }
+.face-label { color: var(--muted); text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; font-weight: 800; margin-bottom: 18px; }
+.card-text { font-size: clamp(1.2rem, 2.3vw, 1.75rem); line-height: 1.35; font-weight: 750; letter-spacing: -.035em; max-width: 540px; }
+.tap-hint { color: var(--muted); font-size: .8rem; margin-top: 22px; }
+.study-controls { display: flex; gap: 10px; margin-top: 18px; }
+.study-controls .btn { flex: 1; }
+.rating-label { margin: 22px 0 10px; font-size: .85rem; font-weight: 750; }
+.rating-buttons { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.rating { border-radius: 12px; padding: 11px 8px; border: 1px solid var(--border); background: var(--surface); font-weight: 800; }
+.rating span { display: block; font-size: .72rem; font-weight: 600; margin-top: 3px; opacity: .75; }
+.rating.easy { color: var(--green); border-color: #bde8d6; background: #f0fff8; }
+.rating.medium { color: var(--amber); border-color: #f3dfb6; background: #fffbef; }
+.rating.hard { color: var(--red); border-color: #f1c7ca; background: #fff5f5; }
+.rating:disabled { opacity: .4; cursor: not-allowed; }
+.side-panel h3 { margin: 0 0 7px; font-size: 1.05rem; }
+.side-subtitle { margin: 0 0 18px; color: var(--muted); font-size: .85rem; line-height: 1.5; }
+.box-list { display: grid; gap: 11px; }
+.box-item { border: 1px solid var(--border); border-radius: 15px; padding: 14px; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.box-title { display: flex; gap: 10px; align-items: center; font-weight: 800; }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot.easy { background: #22a875; } .dot.medium { background: #e0a12d; } .dot.hard { background: #d75a62; }
+.box-description { font-size: .76rem; color: var(--muted); margin-top: 4px; }
+.box-number { font-size: 1.2rem; font-weight: 850; }
+.box-action { margin-top: 15px; width: 100%; }
+.deck-tools { display: flex; gap: 10px; flex-wrap: wrap; }
+.table-wrap { overflow-x: auto; }
+.deck-table { width: 100%; border-collapse: collapse; min-width: 540px; }
+.deck-table th, .deck-table td { padding: 12px 10px; border-bottom: 1px solid var(--border); text-align: left; font-size: .87rem; }
+.deck-table th { color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-spacing: .07em; }
+.empty { text-align: center; color: var(--muted); padding: 25px; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(18, 24, 48, .48); display: none; place-items: center; padding: 16px; }
+.modal-backdrop.open { display: grid; }
+.modal { width: min(560px, 100%); background: var(--surface); border-radius: 22px; padding: 24px; box-shadow: var(--shadow); max-height: 90vh; overflow: auto; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.modal-head h2 { margin: 0; }
+.form-grid { display: grid; gap: 14px; }
+label { display: block; font-size: .85rem; font-weight: 750; margin-bottom: 7px; }
+input, textarea, select { width: 100%; border: 1px solid var(--border); border-radius: 11px; padding: 11px 12px; background: var(--surface); color: var(--text); }
+textarea { resize: vertical; min-height: 100px; }
+.form-actions { display: flex; justify-content: end; gap: 10px; margin-top: 18px; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translate(-50%, 20px); background: #172033; color: white; padding: 12px 17px; border-radius: 12px; opacity: 0; pointer-events: none; transition: .25s; z-index: 100; box-shadow: var(--shadow); font-size: .9rem; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+footer { text-align: center; color: var(--muted); padding: 22px; font-size: .8rem; }
+@media (max-width: 820px) {
+  .hero { align-items: start; flex-direction: column; }
+  .stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .study-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .topbar { padding: 12px 15px; }
+  .pill { display: none; }
+  main { padding-top: 25px; }
+  .stats { gap: 9px; }
+  .stat { padding: 14px; }
+  .stat-value { font-size: 1.45rem; }
+  .study-panel, .side-panel { padding: 15px; }
+  .card-face { padding: 20px; }
+  .study-controls { flex-wrap: wrap; }
+  .rating-buttons { gap: 6px; }
+  .rating { font-size: .85rem; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><div class="logo">↻</div><span>Recall<span style="color:var(--primary)">.</span></span></div>
+    <div class="top-actions"><span class="pill">LEITNER STUDY SYSTEM</span><button class="btn small" id="resetBtn">Reset progress</button></div>
+  </header>
+  <main>
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Study smarter, not longer</div>
+        <h1>Build recall that<br>actually lasts.</h1>
+        <p class="subtitle">A simple spaced-repetition flashcard deck. Flip a card, test your memory, then sort it into Easy, Medium, or Hard to guide your next review.</p>
+      </div>
+      <div class="hero-buttons"><button class="btn" id="exportBtn">Export backup</button><button class="btn primary" id="addCardBtn">＋ Add flashcard</button></div>
+    </section>
+
+    <section class="stats" aria-label="Study statistics">
+      <div class="stat"><div class="stat-label">Total flashcards</div><div class="stat-value" id="totalStat">0</div><div class="stat-note">In your current deck</div></div>
+      <div class="stat"><div class="stat-label">Reviewed</div><div class="stat-value" id="reviewedStat">0</div><div class="stat-note">Cards rated at least once</div></div>
+      <div class="stat"><div class="stat-label">Mastered</div><div class="stat-value" id="masteredStat">0</div><div class="stat-note">Cards in the Easy box</div></div>
+      <div class="stat"><div class="stat-label">Study streak</div><div class="stat-value" id="streakStat">0 <span style="font-size:.9rem">days</span></div><div class="stat-note">Days with a review</div></div>
+    </section>
+
+    <section class="progress-card">
+      <div class="progress-heading"><span>Deck review progress</span><span id="progressLabel">0% complete</span></div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </section>
+
+    <section class="section-head">
+      <div><h2>Study session</h2><p>Try to answer before revealing the back of the card.</p></div>
+      <div class="deck-tools"><select id="filterBox" aria-label="Filter by box" style="width:auto"><option value="all">All boxes</option><option value="hard">Hard only</option><option value="medium">Medium only</option><option value="easy">Easy only</option></select></div>
+    </section>
+
+    <section class="study-layout">
+      <div class="study-panel">
+        <div class="study-meta"><span class="tag" id="currentBoxTag">NEW CARD</span><span class="card-count" id="cardCounter">Card 1 of 1</span></div>
+        <div class="flip-scene">
+          <div class="flashcard" id="flashcard" tabindex="0" role="button" aria-label="Flashcard. Press Enter or Space to flip.">
+            <div class="card-face front"><div class="face-label">Question</div><div class="card-text" id="questionText">What is spaced repetition?</div><div class="tap-hint">Click or press Enter to reveal answer ↗</div></div>
+            <div class="card-face back"><div class="face-label">Answer</div><div class="card-text" id="answerText">A learning technique that reviews information at increasing intervals.</div><div class="tap-hint">Rate how well you remembered it below</div></div>
+          </div>
+        </div>
+        <div class="study-controls"><button class="btn" id="prevBtn">← Previous</button><button class="btn primary" id="flipBtn">Reveal answer</button><button class="btn" id="nextBtn">Next →</button></div>
+        <div class="rating-label">How well did you remember?</div>
+        <div class="rating-buttons">
+          <button class="rating hard" data-rating="hard">Hard<span>Review soon</span></button>
+          <button class="rating medium" data-rating="medium">Medium<span>Practice again</span></button>
+          <button class="rating easy" data-rating="easy">Easy<span>Know it well</span></button>
+        </div>
+      </div>
+      <aside class="side-panel">
+        <h3>Your Leitner boxes</h3><p class="side-subtitle">Rate each card after reviewing. Hard cards stay in the first box, Medium cards move to the middle, and Easy cards move to the final box.</p>
+        <div class="box-list">
+          <div class="box-item"><div><div class="box-title"><span class="dot hard"></span>Box 1 · Hard</div><div class="box-description">Prioritise these for frequent review</div></div><div class="box-number" id="hardCount">0</div></div>
+          <div class="box-item"><div><div class="box-title"><span class="dot medium"></span>Box 2 · Medium</div><div class="box-description">Build confidence with practice</div></div><div class="box-number" id="mediumCount">0</div></div>
+          <div class="box-item"><div><div class="box-title"><span class="dot easy"></span>Box 3 · Easy</div><div class="box-description">Space reviews further apart</div></div><div class="box-number" id="easyCount">0</div></div>
+        </div>
+        <button class="btn box-action" id="reviewHardBtn">Review Hard cards</button>
+        <div style="border-top:1px solid var(--border);margin:22px 0 18px"></div>
+        <h3>Quick guide</h3>
+        <p class="side-subtitle" style="margin-bottom:0">1. Read the question.<br>2. Think of the answer.<br>3. Flip the card.<br>4. Rate honestly.<br>5. Repeat regularly.</p>
+      </aside>
+    </section>
+
+    <section class="section-head" style="margin-top:34px">
+      <div><h2>Flashcard library</h2><p>Manage your cards and see their current difficulty.</p></div>
+    </section>
+    <section class="study-panel table-wrap">
+      <table class="deck-table"><thead><tr><th>Question</th><th>Box</th><th>Reviews</th><th>Next review</th><th>Action</th></tr></thead><tbody id="deckRows"></tbody></table>
+    </section>
+  </main>
+  <footer>Recall · Spaced Repetition Flashcards · Progress is saved locally in this browser.</footer>
+</div>
+
+<div class="modal-backdrop" id="cardModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head"><h2 id="modalTitle">Add flashcard</h2><button class="btn small" id="closeModalBtn" aria-label="Close">✕</button></div>
+    <form id="cardForm">
+      <div class="form-grid">
+        <div><label for="questionInput">Question / front</label><textarea id="questionInput" required maxlength="500" placeholder="e.g. What is HTML?"></textarea></div>
+        <div><label for="answerInput">Answer / back</label><textarea id="answerInput" required maxlength="1000" placeholder="e.g. HyperText Markup Language..."></textarea></div>
+      </div>
+      <div class="form-actions"><button type="button" class="btn" id="cancelModalBtn">Cancel</button><button type="submit" class="btn primary">Save flashcard</button></div>
+    </form>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+const STORAGE_KEY = "recall_leitner_deck_v1";
+const TODAY = () => new Date().toISOString().slice(0, 10);
+const defaultCards = [
+  {id:1,q:"What is spaced repetition?",a:"A learning technique that reviews information at increasing intervals to improve long-term memory.",box:"medium",reviews:1,lastReviewed:"",nextReview:"Today"},
+  {id:2,q:"What does HTML stand for?",a:"HyperText Markup Language. It defines the structure and content of a web page.",box:"easy",reviews:2,lastReviewed:"",nextReview:"In 3 days"},
+  {id:3,q:"What is the purpose of CSS?",a:"CSS (Cascading Style Sheets) controls the visual presentation and layout of HTML elements.",box:"hard",reviews:1,lastReviewed:"",nextReview:"Today"},
+  {id:4,q:"What does localStorage do in JavaScript?",a:"It stores key-value data in the browser that remains available after a page reload or browser restart.",box:"medium",reviews:0,lastReviewed:"",nextReview:"Today"},
+  {id:5,q:"What is a 3D CSS transform used for in a flip card?",a:"Properties such as perspective, transform-style: preserve-3d, backface-visibility, and rotateY create a 3D flip effect.",box:"hard",reviews:0,lastReviewed:"",nextReview:"Today"},
+  {id:6,q:"What is the Leitner method?",a:"A flashcard learning system that sorts cards into boxes based on recall success. Difficult cards are reviewed more often.",box:"easy",reviews:2,lastReviewed:"",nextReview:"In 3 days"}
+];
+let cards = loadCards();
+let currentIndex = 0;
+let isFlipped = false;
+let filter = "all";
+let sessionReviewed = new Set();
+
+function loadCards() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed.cards) && parsed.cards.length) return parsed.cards;
+    }
+  } catch (e) { console.warn("Could not load saved deck", e); }
+  return defaultCards.map(c => ({...c}));
+}
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({cards, lastStudyDate: TODAY()})); }
+  catch (e) { showToast("Browser storage is unavailable. Export a backup to keep your cards."); }
+}
+function escapeHTML(str) {
+  return String(str).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+function getFilteredCards() { return cards.filter(c => filter === "all" || c.box === filter); }
+function activeCard() {
+  const list = getFilteredCards();
+  if (!list.length) return null;
+  if (currentIndex >= list.length) currentIndex = 0;
+  return list[currentIndex];
+}
+function flip() {
+  if (!activeCard()) return;
+  isFlipped = !isFlipped;
+  document.getElementById("flashcard").classList.toggle("flipped", isFlipped);
+  document.getElementById("flipBtn").textContent = isFlipped ? "Hide answer" : "Reveal answer";
+  document.querySelectorAll("[data-rating]").forEach(b => b.disabled = !isFlipped || !activeCard());
+}
+function render() {
+  const list = getFilteredCards();
+  const card = activeCard();
+  const flashcard = document.getElementById("flashcard");
+  flashcard.classList.remove("flipped");
+  isFlipped = false;
+  document.getElementById("flipBtn").textContent = "Reveal answer";
+  document.querySelectorAll("[data-rating]").forEach(b => b.disabled = !card || !isFlipped);
+  if (card) {
+    document.getElementById("questionText").textContent = card.q;
+    document.getElementById("answerText").textContent = card.a;
+    document.getElementById("currentBoxTag").textContent = card.box === "new" ? "NEW CARD" : card.box.toUpperCase() + " BOX";
+    document.getElementById("cardCounter").textContent = `Card ${currentIndex + 1} of ${list.length}`;
+    document.getElementById("prevBtn").disabled = list.length < 2;
+    document.getElementById("nextBtn").disabled = list.length < 2;
+  } else {
+    document.getElementById("questionText").textContent = "No cards in this box yet";
+    document.getElementById("answerText").textContent = "Add a flashcard or choose another box filter.";
+    document.getElementById("currentBoxTag").textContent = "EMPTY";
+    document.getElementById("cardCounter").textContent = "0 cards";
+    document.getElementById("prevBtn").disabled = true;
+    document.getElementById("nextBtn").disabled = true;
+  }
+  const total = cards.length;
+  const reviewed = cards.filter(c => c.reviews > 0).length;
+  const easy = cards.filter(c => c.box === "easy").length;
+  const medium = cards.filter(c => c.box === "medium").length;
+  const hard = cards.filter(c => c.box === "hard" || c.box === "new").length;
+  const pct = total ? Math.round(reviewed / total * 100) : 0;
+  document.getElementById("totalStat").textContent = total;
+  document.getElementById("reviewedStat").textContent = reviewed;
+  document.getElementById("masteredStat").textContent = easy;
+  document.getElementById("streakStat").innerHTML = `${sessionReviewed.size ? 1 : 0} <span style="font-size:.9rem">day${sessionReviewed.size ? "" : "s"}</span>`;
+  document.getElementById("progressLabel").textContent = `${pct}% complete`;
+  document.getElementById("progressFill").style.width = `${pct}%`;
+  document.getElementById("hardCount").textContent = hard;
+  document.getElementById("mediumCount").textContent = medium;
+  document.getElementById("easyCount").textContent = easy;
+  renderTable();
+}
+function renderTable() {
+  const tbody = document.getElementById("deckRows");
+  if (!cards.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Your deck is empty. Add your first flashcard above.</td></tr>'; return; }
+  tbody.innerHTML = cards.map(c => {
+    const label = c.box === "new" ? "New" : c.box.charAt(0).toUpperCase() + c.box.slice(1);
+    const due = c.nextReview || "Today";
+    return `<tr><td>${escapeHTML(c.q)}</td><td>${escapeHTML(label)}</td><td>${c.reviews}</td><td>${escapeHTML(due)}</td><td><button class="btn small" onclick="editCard(${c.id})">Edit</button> <button class="btn small" onclick="deleteCard(${c.id})">Delete</button></td></tr>`;
+  }).join("");
+}
+function review(rating) {
+  const card = activeCard();
+  if (!card || !isFlipped) { showToast("Flip the card before rating your answer."); return; }
+  card.reviews = (card.reviews || 0) + 1;
+  card.lastReviewed = TODAY();
+  card.box = rating;
+  card.nextReview = rating === "hard" ? "Today" : rating === "medium" ? "Tomorrow" : "In 3 days";
+  sessionReviewed.add(card.id);
+  save();
+  showToast(`Card moved to ${rating.toUpperCase()} box.`);
+  const list = getFilteredCards();
+  currentIndex = list.length ? (currentIndex + 1) % list.length : 0;
+  render();
+}
+function next(step) {
+  const list = getFilteredCards();
+  if (!list.length) return;
+  currentIndex = (currentIndex + step + list.length) % list.length;
+  render();
+}
+function openModal(card=null) {
+  document.getElementById("cardModal").classList.add("open");
+  document.getElementById("modalTitle").textContent = card ? "Edit flashcard" : "Add flashcard";
+  document.getElementById("questionInput").value = card ? card.q : "";
+  document.getElementById("answerInput").value = card ? card.a : "";
+  document.getElementById("cardForm").dataset.editId = card ? card.id : "";
+  setTimeout(() => document.getElementById("questionInput").focus(), 60);
+}
+function closeModal() { document.getElementById("cardModal").classList.remove("open"); }
+function editCard(id) { const card = cards.find(c => c.id === id); if (card) openModal(card); }
+function deleteCard(id) {
+  const card = cards.find(c => c.id === id);
+  if (!card || !confirm(`Delete this flashcard?\n\n${card.q}`)) return;
+  cards = cards.filter(c => c.id !== id);
+  currentIndex = 0; save(); render(); showToast("Flashcard deleted.");
+}
+function showToast(msg) {
+  const el = document.getElementById("toast"); el.textContent = msg; el.classList.add("show");
+  clearTimeout(showToast.timer); showToast.timer = setTimeout(() => el.classList.remove("show"), 2400);
+}
+document.getElementById("flashcard").addEventListener("click", flip);
+document.getElementById("flashcard").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); } });
+document.getElementById("flipBtn").addEventListener("click", flip);
+document.getElementById("prevBtn").addEventListener("click", () => next(-1));
+document.getElementById("nextBtn").addEventListener("click", () => next(1));
+document.querySelectorAll("[data-rating]").forEach(btn => btn.addEventListener("click", () => review(btn.dataset.rating)));
+document.getElementById("filterBox").addEventListener("change", e => { filter = e.target.value; currentIndex = 0; render(); });
+document.getElementById("addCardBtn").addEventListener("click", () => openModal());
+document.getElementById("closeModalBtn").addEventListener("click", closeModal);
+document.getElementById("cancelModalBtn").addEventListener("click", closeModal);
+document.getElementById("cardModal").addEventListener("click", e => { if (e.target.id === "cardModal") closeModal(); });
+document.getElementById("cardForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const q = document.getElementById("questionInput").value.trim();
+  const a = document.getElementById("answerInput").value.trim();
+  if (!q || !a) return;
+  const editId = e.target.dataset.editId;
+  if (editId) {
+    const card = cards.find(c => c.id === Number(editId));
+    if (card) { card.q = q; card.a = a; }
+    showToast("Flashcard updated.");
+  } else {
+    cards.push({id: Date.now(), q, a, box:"hard", reviews:0, lastReviewed:"", nextReview:"Today"});
+    filter = "all"; document.getElementById("filterBox").value = "all"; currentIndex = cards.length - 1;
+    showToast("Flashcard added to the Hard review box.");
+  }
+  save(); closeModal(); render();
+});
+document.getElementById("reviewHardBtn").addEventListener("click", () => { filter = "hard"; document.getElementById("filterBox").value = "hard"; currentIndex = 0; render(); showToast("Showing Hard cards."); });
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (!confirm("Reset your deck to the original sample cards? This removes cards you added and clears progress.")) return;
+  cards = defaultCards.map(c => ({...c, lastReviewed:""})); filter = "all"; currentIndex = 0; sessionReviewed.clear();
+  document.getElementById("filterBox").value = "all"; save(); render(); showToast("Deck reset.");
+});
+document.getElementById("exportBtn").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify({exportedAt:new Date().toISOString(), cards}, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "recall-flashcards-backup.json"; a.click(); URL.revokeObjectURL(url);
+  showToast("Backup exported.");
+});
+render();
+</script>
+</body>
+</html>
